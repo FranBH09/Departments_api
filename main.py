@@ -14,7 +14,7 @@ def obtener_departamentos():
         cursor.execute(sql)
         datos = cursor.fetchall()
 
-        # Convertir los datos a formato JSON diccionario
+        # Convertir los datos a formato JSON
         departamentos = []
         for fila in datos:
             departamento = {
@@ -32,7 +32,7 @@ def obtener_departamentos():
     except Exception as ex:
         return jsonify({'error': 'Error en la consulta'}), 500  
 
-# Registrar un nuevo elemento (POST)
+# Registrar uno nuevo (POST)
 @app.route('/Department', methods=['POST'])
 def registrar_departamento():
     try:
@@ -70,20 +70,60 @@ def pagina_no_encontrada(error):
 
 
 ##/////ELIMINAR
-@app.route('/Department', methods=['DELETE'])
+## ELIMINAR
+@app.route('/Department/<int:id>', methods=['DELETE'])
 def eliminar_departamento(id):
     try:
         cursor = conexion.connection.cursor()
         sql = "DELETE FROM Human_resources.Departments_2 WHERE DEPARTMENT_ID = %s;"
         cursor.execute(sql, (id,))
         conexion.connection.commit()
-        return jsonify({'mensaje': 'Departamento eliminado correctamente'}), 200  # Código 200 = OK
+        return jsonify({'mensaje': f'Departamento con ID {id} eliminado correctamente'}), 200  # Código 200 
     except Exception as ex:
-        return jsonify({'error': 'Error al eliminar el departamento'}), 500  # Código 500 = Internal Server Error
+        return jsonify({'error': 'Error al eliminar el departamento', 'detalle': str(ex)}), 500  # Código 500 
+
+
+##UPDATE  = Put
+@app.route('/Department/<int:id>', methods=['PUT'])
+def actualizar_departamento(id):
+    try: 
+        cursor = conexion.connection.cursor()
+        datos = request.json  
+        columnas_validas = {
+            "DEPARTMENT_ID", "DEPARTMENT_NAME", "DEPARTMENT_ABREV",
+            "MANAGER_ID", "LAST_UPDATED", "LOCATION"
+        }
+
+        campos = []
+        valores = []
+
+        # Filtrar solo las claves que sean columnas válidas
+        for clave, valor in datos.items():
+            if clave in columnas_validas:
+                campos.append(f"{clave} = %s")
+                valores.append(valor)
+
+    ##Campos que si existemn
+        if not campos:
+            return jsonify({'error': 'No se enviaron campos válidos para actualizar'}), 400
+
+##Consulta
+        sql = f"UPDATE Human_resources.Departments_2 SET {', '.join(campos)} WHERE DEPARTMENT_ID = %s;"
+        valores.append(id)
+
+        # Ejecutar la actualización en la base de datos
+        cursor.execute(sql, tuple(valores))
+        conexion.connection.commit()
+        
+        return jsonify({'mensaje': f'Departamento con ID {id} actualizado correctamente'}), 200
+
+    except Exception as ex:
+        return jsonify({'error': 'Error al actualizar el departamento', 'detalle': str(ex)}), 500
 
 
 
-if __name__ == '_main_':
+
+if __name__ == '__main__':
     app.config.from_object(config['development'])
     app.register_error_handler(404, pagina_no_encontrada)
     app.run(debug=True)
